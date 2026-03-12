@@ -1,0 +1,17 @@
+#create key gen
+ssh-keygen -t rsa -b 4096 -C "arulrajgopal@Outlook.com"
+
+#This will generate two files:
+#Private key: id_rsa
+#Public key: id_rsa.pub
+
+
+#Add the Public Key to Your Server
+cat .ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+
+
+#Store the Private Key in GitHub Secrets
+#Navigate to Settings > Secrets and variables > Actions.
+#Click New repository secret.
+#Name it SSH_PRIVATE_KEY and paste the private key (id_rsa) content inside.
+

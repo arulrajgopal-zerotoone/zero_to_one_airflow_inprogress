@@ -1,0 +1,33 @@
+#install postgresql
+sudo apt install postgresql
+
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+
+psql --version
+
+
+#install python
+sudo apt-get install python3.6
+
+python3 --version
+
+# pip install
+sudo apt install python3-pip
+
+
+# setting up virtual environment
+sudo apt install python3-venv
+cd
+python3 -m venv myenv
+source /home/Arulraj/myenv/bin/activate
+
+cd /home/Arulraj/Desktop/zero_to_one_website_setup/
+
+#install python dependencies
+pip install -r requirements.txt
+
+#deactivate and delete virtual environment
+deactivate
+rm -rf myenv
+

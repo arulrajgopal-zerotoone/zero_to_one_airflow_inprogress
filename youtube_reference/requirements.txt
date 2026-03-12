@@ -1,0 +1,7 @@
+google-api-python-client
+pandas
+flask_cors
+flask
+boto3
+psycopg2
+sqlalchemy

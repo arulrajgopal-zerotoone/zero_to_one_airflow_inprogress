@@ -1,0 +1,31 @@
+# copy paste the below content into .github/workflows/deploy.yml
+
+
+name: Deploy to Linux Server
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+        shell: bash
+
+      - name: Connect and Deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}"@"${{ secrets.SSH_HOST }}" "sudo mkdir -p /var/www/html/"
+          # Use sudo to ensure rsync has proper permissions for the target directory
+          rsync -avz --delete static/ "${{ secrets.SSH_USER }}"@"${{ secrets.SSH_HOST }}":/var/www/html/ --rsync-path="sudo rsync"

@@ -1,0 +1,28 @@
+This demo performed using azure virtual machine
+
+1.Spin up Azure virtual machine
+	- inbound ports HTTP, HTTPS, SSH
+	- if required add RDP 
+
+2. login via ssh 
+
+3. sudo apache2 service install
+
+sudo su
+
+sudo apt update
+sudo apt install apache2 -y
+
+4.enable service while login
+
+sudo systemctl enable apache2
+
+5.reboot the machine
+
+Additional cmds: - 
+check status of service
+sudo systemctl status apache2
+
+manullay start and stop as service
+sudo systemctl start apache2
+sudo systemctl stop apache2

@@ -1,0 +1,35 @@
+Azure virtual linux machine as webserver
+
+1. create azure virtual machine
+	- make sure to select the inbound ports as HTTP & HTTPS
+
+2. login via ssh 
+
+4. sudo apache2 service install
+
+sudo su
+
+sudo apt update
+sudo apt install apache2 -y
+
+5.enable service while login
+
+sudo systemctl enable apache2
+
+6.reboot the machine
+
+7.clone the git repo and make sure it as index.html file
+
+cd /var/wwww/html/
+
+git clone 
+
+8.Take ip address and paste and go in browser 
+
+Additional cmds: - 
+check status of service
+sudo systemctl status apache2
+
+manullay start and stop as service
+sudo systemctl start apache2
+sudo systemctl stop apache2
