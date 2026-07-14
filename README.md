@@ -1,75 +1,131 @@
+# zero_to_one_airflow
+
+Airflow-based ETL demo: DAGs load an orders/customers/products schema into
+Postgres via a couple of stored procedures. See [Architecture.md](Architecture.md)
+for the target Azure architecture.
+
 # ER diagram for the workflow
 
 ![image](https://github.com/user-attachments/assets/7e3feb42-b7d3-4dce-899b-c56eec999387)
-
-
 
 # data pipeline flow
 
 ![image](https://github.com/user-attachments/assets/17c776d1-8d13-47c0-b502-e61b412070a8)
 
+---
 
+# Deploy to Azure (Terraform)
 
+Infra lives in [IAC/terraform/](IAC/terraform/): a resource group, VNet/NSG,
+an Airflow VM (Docker Compose, LocalExecutor), an Azure Postgres Flexible
+Server (metadata DB), a Storage Account (`dags`/`logs` blob containers) and a
+Key Vault holding the generated connection strings.
 
-# Setup procedure
-1.Setup a linux machine(for the demo, below machine used)
+## Prerequisites
 
-    * Azure Virtual Machine
-    * Operating System: Linux (ubuntu-24_04-lts)
-    * Standard D2s v3 (2 vcpus, 8 GiB memory)
+- An Azure subscription
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5.0
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), logged in (`az login`)
+- An SSH key pair for VM access (`ssh-keygen -t ed25519 -f ~/.ssh/airflow_vm` if you don't have one)
+- Your current public IP (`curl -s ifconfig.me`) — the NSG only allows SSH/8080 from this IP
 
-2.Install Python 
+## 1. Create a service principal for Terraform
 
-    sudo apt-get install python3.12.3
-    python3 --version
+The `azurerm` provider ([main.tf](IAC/terraform/src/main.tf)) authenticates
+with a service principal, not your interactive `az login` session:
 
-3.Clone the Repository
+```bash
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+az ad sp create-for-rbac --name sp-airflow-tf --role Contributor \
+  --scopes /subscriptions/$SUBSCRIPTION_ID
+# note the appId (client_id), password (client_secret) and tenant from the output
+```
 
-    git clone https://github.com/ArulrajGopal/data_pipeline.git /project_directory/
+## 2. Export the sensitive variables
 
-4.set project directory and virtual environment directory in variable.json
+These are intentionally **not** in `dev.tfvars` so secrets never land in
+source control — pass them as environment variables:
 
+```bash
+export TF_VAR_tenant_id="<tenant>"
+export TF_VAR_subscription_id="$SUBSCRIPTION_ID"
+export TF_VAR_client_id="<appId>"
+export TF_VAR_client_secret="<password>"
+export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
+export TF_VAR_vm_ssh_public_key="$(cat ~/.ssh/airflow_vm.pub)"
+```
 
-5.Run setup file
+## 3. Review `dev.tfvars`
 
-    cd project_directory
-    source setup.sh
+Open [IAC/terraform/config/dev.tfvars](IAC/terraform/config/dev.tfvars) and:
 
-6.start all components
+- Set `allowed_source_ip_cidr` to `"<your-ip>/32"`
+- Check `storage_account_name` / `key_vault_name` are still globally unique
+  (rename if `terraform apply` reports a name collision)
 
+## 4. Init, plan, apply
 
-    # initializes the database, creates a user and starts all components(webserver and scheduler)
-    # Note: Once the initial setup has been completed on a machine/server, all future starts will begin from this step onwards only
+```bash
+cd IAC/terraform/src
+terraform init
+terraform plan  -var-file=../config/dev.tfvars
+terraform apply -var-file=../config/dev.tfvars
+```
 
-    airflow standalone
+Note the outputs (`vm_public_ip`, `storage_account_name`, `key_vault_name`,
+`postgres_server_fqdn`) — you'll need them below.
 
+On first boot, the VM's `custom_data`
+([scripts/install_docker.sh](IAC/terraform/src/scripts/install_docker.sh))
+installs Docker, pulls the Postgres connection string from Key Vault, and
+starts the webserver/scheduler stack
+([scripts/docker-compose.yml](IAC/terraform/src/scripts/docker-compose.yml)).
+This takes a few minutes after `apply` finishes.
 
-7.deploy the dags(note: - deletion of dags is not implemented.)
+## 5. Upload the DAGs and tasks to Blob Storage
 
-    source deploy_dags.sh
+The VM syncs DAGs *from* Blob every 3 minutes (it doesn't read this git repo
+directly). Push this repo's `dags/` and `tasks/` folders into the `dags`
+container using the connection string Terraform generated:
 
+```bash
+KEY_VAULT_NAME=<key_vault_name output>
+CONN=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" \
+  --name airflow-storage-connection-string --query value -o tsv)
 
-8.login webui using "http://localhost:8080/"
+az storage blob upload-batch --connection-string "$CONN" \
+  -d dags -s dags --destination-path dags
 
+az storage blob upload-batch --connection-string "$CONN" \
+  -d dags -s tasks --destination-path tasks
+```
 
+Re-run these two commands whenever DAG/task code changes; the VM's
+`airflow-blob-sync.timer` picks them up within ~3 minutes.
 
+## 6. Log in to the webserver UI
 
+```bash
+VM_IP=<vm_public_ip output>
+ssh azureuser@$VM_IP -i ~/.ssh/airflow_vm   # matches vm_admin_username in variables.tf
 
+sudo docker compose -f /opt/airflow/docker-compose.yml ps
+cat /opt/airflow/simple_auth_manager_passwords.json.generated   # admin password
+```
 
-# Additional information
+Open `http://<vm_public_ip>:8080` and log in as `admin` with that password
+(same convention as the local venv setup below).
 
-    1.To activate virtual environment, in case of exited the environment
+## 7. Tear down
 
-        - set current working as project directory and run below
+```bash
+terraform destroy -var-file=../config/dev.tfvars
+```
 
-            source activate_venv.sh
+---
 
-    2.default login credentials
+# Local / manual setup (no Azure)
 
-        - username is "admin"
-
-        - password will be saved in "<VENV_DIR>/airflow/simple_auth_manager_passwords.json.generated"
-        
-        - VENV_DIR is defined in setup.sh file
-
-
+For running everything on a single machine without the Terraform stack, see
+[old_README.md](old_README.md) — installs Postgres + a Python venv + Airflow
+directly via `setup.sh` / `deploy_dags.sh`.
