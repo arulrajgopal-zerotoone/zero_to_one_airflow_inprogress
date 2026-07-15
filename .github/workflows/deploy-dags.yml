@@ -1,0 +1,48 @@
+name: Deploy DAGs
+
+# Pushes src/dags/ and src/tasks/ to the "dags" blob container, the same two
+# az storage blob upload-batch calls documented in README.md and used by
+# src/scripts/upload_dags.ps1 for a local run. The VM's airflow-blob-sync.timer
+# (installed by src/scripts/install_docker.sh) pulls these down within ~3 minutes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/dags/**"
+      - "src/tasks/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload dags/ and tasks/ to Blob Storage
+        env:
+          KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME || 'kaninipro-kv-airflow-dev' }}
+          SECRET_NAME: airflow-storage-connection-string
+        run: |
+          set -euo pipefail
+          CONN=$(az keyvault secret show \
+            --vault-name "$KEY_VAULT_NAME" \
+            --name "$SECRET_NAME" \
+            --query value -o tsv)
+
+          az storage blob upload-batch --connection-string "$CONN" \
+            -d dags -s src/dags --destination-path dags --overwrite
+
+          az storage blob upload-batch --connection-string "$CONN" \
+            -d dags -s src/tasks --destination-path tasks --overwrite
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true

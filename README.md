@@ -77,51 +77,41 @@ This takes a few minutes after `apply` finishes.
 
 # Deploy DAGs & Operate the VM
 
-Once `terraform apply` has finished and the VM has booted, use these steps to
-push DAG code, log in, and tear things down.
+Once `terraform apply` has finished and the VM has booted,
+[.github/workflows/deploy-dags.yml](.github/workflows/deploy-dags.yml) and
+[.github/workflows/operate-vm.yml](.github/workflows/operate-vm.yml) push DAG
+code and operate the VM — no local `az login` session needed. One-time setup:
 
-## 1. Upload the DAGs and tasks to Blob Storage
+- Add a repo secret `AZURE_CREDENTIALS` — the JSON output of an
+  `az ad sp create-for-rbac --sdk-auth`-style credential
+  (`{"clientId", "clientSecret", "subscriptionId", "tenantId"}`) for a
+  service principal that already has Key Vault "Get/List" on secrets
+  (same access the Terraform deployer in [keyvault.tf](IAC/terraform/src/keyvault.tf)
+  has) and Contributor on the VM.
+- Optionally add a repo variable `KEY_VAULT_NAME` if it differs from the
+  `kaninipro-kv-airflow-dev` default in [dev.tfvars](IAC/terraform/config/dev.tfvars).
 
-The VM syncs DAGs *from* Blob every 3 minutes (it doesn't read this git repo
-directly). Push this repo's `src/dags/` and `src/tasks/` folders into the
-`dags` container using the connection string Terraform generated:
+**Deploy DAGs** runs automatically on every push to `main` touching
+`src/dags/**` or `src/tasks/**`, or manually via
+Actions → Deploy DAGs → Run workflow.
 
-```bash
-KEY_VAULT_NAME=<key_vault_name output>
-CONN=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" \
-  --name airflow-storage-connection-string --query value -o tsv)
+**Operate VM** is manual-only (Actions → Operate VM → Run workflow) and takes
+an `action` input:
 
-az storage blob upload-batch --connection-string "$CONN" \
-  -d dags -s src/dags --destination-path dags
+| action           | what it does                                                        |
+|------------------|----------------------------------------------------------------------|
+| `status`         | prints VM power state + `docker compose ps` output                  |
+| `start`          | `az vm start`                                                       |
+| `stop`           | `az vm deallocate` (stops billing for compute; disks are preserved) |
+| `restart-stack`  | `docker compose down && up -d` on the VM                            |
+| `sync-now`       | forces `airflow-blob-sync.service` instead of waiting ~3 minutes     |
+| `login-info`     | prints the webserver UI URL (`http://<vm-ip>:8080`) and the auto-generated `admin` password |
 
-az storage blob upload-batch --connection-string "$CONN" \
-  -d dags -s src/tasks --destination-path tasks
-```
+These use `az vm run-command invoke` / `az vm start`/`deallocate`, which go
+through the Azure control plane rather than SSH — they work even though the
+NSG ([network.tf](IAC/terraform/src/network.tf)) only allows SSH/8080 from the
+developer's own IP. Provisioning/teardown (`terraform apply`/`destroy`) is
+**not** wired into CI since state is local ([versions.tf](IAC/terraform/src/versions.tf)
+has no remote backend configured) — keep running those from your machine per
+the Terraform section above.
 
-Re-run these two commands whenever DAG/task code changes; the VM's
-`airflow-blob-sync.timer` picks them up within ~3 minutes.
-
-## 2. Log in to the webserver UI
-
-```bash
-VM_IP=<vm_public_ip output>
-ssh azureuser@$VM_IP   # matches vm_admin_username in variables.tf; enter TF_VAR_vm_admin_password when prompted
-
-sudo docker compose -f /opt/airflow/docker-compose.yml ps
-cat /opt/airflow/simple_auth_manager_passwords.json.generated   # admin password
-```
-
-Open `http://<vm_public_ip>:8080` and log in as `admin` with that password
-(same convention as the local venv setup below).
-
-## 3. Tear down
-
-```bash
-terraform destroy -var-file="../config/dev.tfvars"
-```
-
-## Local / manual setup (no Azure)
-
-For running everything on a single machine without the Terraform stack, see
-[old_README.md](old_README.md) — installs Postgres + a Python venv + Airflow
-directly via `setup.sh` / `deploy_dags.sh`.

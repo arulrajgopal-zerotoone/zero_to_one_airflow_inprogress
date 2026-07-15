@@ -1,0 +1,104 @@
+name: Operate VM
+
+# Start/stop/inspect the Airflow VM without needing network access to it: the
+# NSG (IAC/terraform/src/network.tf) only allows SSH/8080 from the developer's
+# own IP, so a GitHub-hosted runner can't reach it directly. `az vm start` /
+# `az vm deallocate` and `az vm run-command invoke` go through the Azure
+# Resource Manager control plane instead, bypassing the NSG entirely.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Operation to run against the VM
+        required: true
+        type: choice
+        options:
+          - status
+          - start
+          - stop
+          - restart-stack
+          - sync-now
+          - login-info
+      resource_group:
+        description: Resource group containing the VM
+        required: false
+        default: rg-airflow-dev
+      vm_name:
+        description: VM name
+        required: false
+        default: vm-airflow-dev
+
+permissions:
+  contents: read
+
+jobs:
+  operate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Power state
+        if: inputs.action == 'status'
+        run: |
+          az vm get-instance-view \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --query "instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus" \
+            -o tsv
+
+      - name: Docker Compose stack status
+        if: inputs.action == 'status'
+        run: |
+          az vm run-command invoke \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --command-id RunShellScript \
+            --scripts "docker compose -f /opt/airflow/docker-compose.yml ps" \
+            --query "value[0].message" -o tsv
+
+      - name: Start VM
+        if: inputs.action == 'start'
+        run: |
+          az vm start -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}"
+
+      - name: Stop (deallocate) VM
+        if: inputs.action == 'stop'
+        run: |
+          az vm deallocate -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}"
+
+      - name: Restart the Airflow stack
+        if: inputs.action == 'restart-stack'
+        run: |
+          az vm run-command invoke \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --command-id RunShellScript \
+            --scripts "cd /opt/airflow && docker compose down && docker compose up -d" \
+            --query "value[0].message" -o tsv
+
+      - name: Force an immediate DAG/log blob sync
+        if: inputs.action == 'sync-now'
+        run: |
+          az vm run-command invoke \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --command-id RunShellScript \
+            --scripts "systemctl start airflow-blob-sync.service && journalctl -u airflow-blob-sync.service -n 20 --no-pager" \
+            --query "value[0].message" -o tsv
+
+      - name: Webserver UI URL + admin password
+        if: inputs.action == 'login-info'
+        run: |
+          IP=$(az vm list-ip-addresses \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" -o tsv)
+          echo "Webserver UI: http://$IP:8080  (user: admin)"
+
+          az vm run-command invoke \
+            -g "${{ inputs.resource_group }}" -n "${{ inputs.vm_name }}" \
+            --command-id RunShellScript \
+            --scripts "cat /opt/airflow/simple_auth_manager_passwords.json.generated" \
+            --query "value[0].message" -o tsv
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
