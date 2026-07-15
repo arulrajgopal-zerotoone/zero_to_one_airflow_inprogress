@@ -1,11 +1,12 @@
 import psycopg2
+import os
 
 # Connect to the database
 conn = psycopg2.connect(
-    host="localhost",
-    database="postgres",
-    user="postgres",
-    password="Arulraj@1234"
+    host=os.environ["POSTGRES_HOST"],
+    database=os.environ["POSTGRES_DB"],
+    user=os.environ["POSTGRES_USER"],
+    password=os.environ["POSTGRES_PASSWORD"]
 )
 
 

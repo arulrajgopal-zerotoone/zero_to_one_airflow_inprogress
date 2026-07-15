@@ -40,6 +40,10 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ inputs.resource_group || 'rg-airflow-dev' }}
           VM_NAME: ${{ inputs.vm_name || 'vm-airflow-dev' }}
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           set -euo pipefail
 
@@ -47,10 +51,28 @@ jobs:
           # can't collide with heredoc/shell parsing on the way over.
           B64=$(base64 -w0 docker-compose.yml)
 
+          # Same treatment for the data-DB creds, so a password containing
+          # quotes/$ can't break out of the heredoc below.
+          ENV_B64=$(printf 'POSTGRES_HOST=%s\nPOSTGRES_DB=%s\nPOSTGRES_USER=%s\nPOSTGRES_PASSWORD=%s\n' \
+            "$POSTGRES_HOST" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" | base64 -w0)
+
           cat > /tmp/deploy_compose.sh <<EOF
           #!/bin/bash
           set -euo pipefail
           echo "$B64" | base64 -d > /opt/airflow/docker-compose.yml
+
+          # Upsert the data-DB creds into .env, leaving
+          # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN (written once at VM boot by
+          # install_docker.sh from the Key Vault secret) untouched.
+          touch /opt/airflow/.env
+          echo "$ENV_B64" | base64 -d > /tmp/pg.env
+          grep -v -E '^(POSTGRES_HOST|POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=' \
+            /opt/airflow/.env > /tmp/airflow.env.new || true
+          cat /tmp/pg.env >> /tmp/airflow.env.new
+          mv /tmp/airflow.env.new /opt/airflow/.env
+          chmod 600 /opt/airflow/.env
+          rm -f /tmp/pg.env
+
           cd /opt/airflow
           docker compose up -d
           EOF

@@ -1,7 +1,21 @@
 Steps to deploy and run the dag
 1.Infrastructure prepare - go through terraform.md 
 
-2.
+2.GitHub Secrets to set 
+    AZURE_CREDENTIALS in below format
+    {
+        "clientId": "xxxx",
+        "clientSecret": "xxxx",
+        "subscriptionId": "xxxx",
+        "tenantId": "xxxx"
+    }
+
+    POSTGRES_HOST 
+    POSTGRES_DB
+    POSTGRES_USER
+    POSTGRES_PASSWORD
+
+
 
 3.dags and tasks in vm
 cd /opt/airflow/dags

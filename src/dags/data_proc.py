@@ -27,39 +27,26 @@ with DAG(
         bash_command="date",
     )
 
+
     t2 = BashOperator(
-        task_id="create_tables_and_procs",
-        depends_on_past=False,
-        bash_command=f"python3 {BASE_DIR}/create_insert/create_ddl.py"
-
-    )
-
-    t3 = BashOperator(
-        task_id="insert_data",
-        depends_on_past=False,
-        bash_command=f"python3 {BASE_DIR}/create_insert/insert_data.py"
-
-    )
-
-    t4 = BashOperator(
         task_id="load_order_details",
         depends_on_past=False,
         bash_command=f"python3 {BASE_DIR}/tasks/load_order_details.py"
 
     )
 
-    t5 = BashOperator(
+    t3 = BashOperator(
         task_id="load_monthly_summary",
         depends_on_past=False,
         bash_command=f"python3 {BASE_DIR}/tasks/load_monthly_summary.py"
 
     )
 
-    t6 = BashOperator(
+    t4 = BashOperator(
         task_id="print_end_time",
         depends_on_past=False,
         bash_command="date",
     )
 
 
-    t1 >>  t2 >> t3 >> t4 >> t5 >> t6 
+    t1 >>  t2 >> t3 >> t4

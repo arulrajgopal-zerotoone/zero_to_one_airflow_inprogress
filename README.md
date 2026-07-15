@@ -46,6 +46,14 @@ principal with:
 Optionally add a repo variable `KEY_VAULT_NAME` if it differs from the
 `kaninipro-kv-airflow-dev` default in [dev.tfvars](IAC/terraform/config/dev.tfvars).
 
+Also add repo secrets `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER` and
+`POSTGRES_PASSWORD` — credentials for the "data" database that
+`src/create_insert/*.py` and `src/tasks/load_*.py` connect to (read via
+`os.environ`, no longer hardcoded). **Deploy Compose Stack** upserts these
+into `/opt/airflow/.env` on the VM on every run, and `docker-compose.yml`
+passes them into the scheduler container's environment, where the
+`BashOperator`-spawned task scripts inherit them.
+
 Provisioning/teardown (`terraform apply`/`destroy`) is **not** wired into CI
 since state is local ([versions.tf](IAC/terraform/src/versions.tf) has no
 remote backend configured) — keep running those from your machine per the
