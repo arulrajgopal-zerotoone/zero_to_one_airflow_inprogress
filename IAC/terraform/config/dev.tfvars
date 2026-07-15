@@ -17,6 +17,6 @@ postgres_server_name    = "kaninipro-psql-airflow-dev"
 postgres_database_name  = "airflow_metadata"
 
 # Must be globally unique, lowercase alphanumeric, 3-24 chars
-storage_account_name = "stairflowdev"
+storage_account_name = "kaniniprostairflowdev"
 
-key_vault_name = "kv-airflow-dev"
+key_vault_name = "kaninipro-kv-airflow-dev"
