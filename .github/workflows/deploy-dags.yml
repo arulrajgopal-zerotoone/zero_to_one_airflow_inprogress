@@ -2,8 +2,8 @@ name: Deploy DAGs
 
 # Pushes src/dags/ and src/tasks/ to the "dags" blob container, the same two
 # az storage blob upload-batch calls documented in README.md and used by
-# src/scripts/upload_dags.ps1 for a local run. The VM's airflow-blob-sync.timer
-# (installed by src/scripts/install_docker.sh) pulls these down within ~3 minutes.
+# docker_scripts/upload_dags.ps1 for a local run. The VM's airflow-blob-sync.timer
+# (installed by IAC/terraform/install_docker.sh) pulls these down within ~3 minutes.
 on:
   push:
     branches: [main]

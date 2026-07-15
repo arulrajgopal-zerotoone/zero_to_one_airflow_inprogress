@@ -48,7 +48,7 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=$SQL_ALCHEMY_CONN
 ENV_EOF
 chmod 600 "$AIRFLOW_DIR/.env"
 
-# --- docker-compose.yml, rendered from scripts/docker-compose.yml -----------
+# --- docker-compose.yml, rendered from docker-compose.yml (repo root) ------
 cat > "$AIRFLOW_DIR/docker-compose.yml" <<'COMPOSE_EOF'
 ${docker_compose_content}
 COMPOSE_EOF

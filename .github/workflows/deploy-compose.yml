@@ -1,6 +1,6 @@
 name: Deploy Compose Stack
 
-# Pushes src/scripts/docker-compose.yml to the VM and restarts the stack, so a
+# Pushes docker-compose.yml to the VM and restarts the stack, so a
 # change to the stack definition (e.g. adding a service) doesn't require
 # manually SSH-ing in and editing /opt/airflow/docker-compose.yml by hand.
 # Uses az vm run-command invoke (same as operate-vm.yml) to reach the VM
@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/scripts/docker-compose.yml"
+      - "docker-compose.yml"
   workflow_dispatch:
     inputs:
       resource_group:
@@ -45,7 +45,7 @@ jobs:
 
           # Base64-encode so the compose file's YAML anchors/quotes/$ signs
           # can't collide with heredoc/shell parsing on the way over.
-          B64=$(base64 -w0 src/scripts/docker-compose.yml)
+          B64=$(base64 -w0 docker-compose.yml)
 
           cat > /tmp/deploy_compose.sh <<EOF
           #!/bin/bash

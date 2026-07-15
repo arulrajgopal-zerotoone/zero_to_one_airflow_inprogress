@@ -3,7 +3,7 @@
 # scheduler, so there is no separate worker container.
 #
 # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN is read from ./.env (written by
-# scripts/install_docker.sh from the Key Vault secret at VM boot).
+# IAC/terraform/install_docker.sh from the Key Vault secret at VM boot).
 x-airflow-common: &airflow-common
   image: apache/airflow:3.0.2
   environment: &airflow-common-env

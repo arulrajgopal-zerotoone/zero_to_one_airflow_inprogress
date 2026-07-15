@@ -16,11 +16,11 @@ the running VM in sync with this repo — no local `az login` session needed:
   via Actions → Deploy DAGs → Run workflow. It uploads `src/dags/` and
   `src/tasks/` into the `dags` blob container; the VM's
   `airflow-blob-sync.timer` (installed by
-  [install_docker.sh](src/scripts/install_docker.sh)) pulls them down within
+  [install_docker.sh](IAC/terraform/install_docker.sh)) pulls them down within
   ~3 minutes.
 - **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** runs
   automatically on every push to `main` touching
-  `src/scripts/docker-compose.yml`, or manually via Actions → Deploy Compose
+  `docker-compose.yml`, or manually via Actions → Deploy Compose
   Stack → Run workflow (optionally overriding the `resource_group`/`vm_name`
   inputs). It pushes the compose file to the VM and runs
   `docker compose up -d` via `az vm run-command invoke`, so a change to the

@@ -59,10 +59,10 @@ Note the outputs (`vm_public_ip`, `storage_account_name`, `key_vault_name`,
 `postgres_server_fqdn`) — you'll need them below.
 
 On first boot, the VM's `custom_data`
-([scripts/install_docker.sh](src/scripts/install_docker.sh))
+([scripts/install_docker.sh](IAC/terraform/install_docker.sh))
 installs Docker, pulls the Postgres connection string from Key Vault, and
 starts the webserver/scheduler stack
-([scripts/docker-compose.yml](src/scripts/docker-compose.yml)).
+([docker-compose.yml](docker-compose.yml)).
 This takes a few minutes after `apply` finishes.
 
 ---
