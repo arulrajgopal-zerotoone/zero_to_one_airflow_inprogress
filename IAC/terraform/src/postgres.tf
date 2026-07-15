@@ -26,6 +26,13 @@ resource "azurerm_postgresql_flexible_server_database" "metadata" {
   collation = "en_US.utf8"
 }
 
+resource "azurerm_postgresql_flexible_server_database" "data" {
+  name      = "data"
+  server_id = azurerm_postgresql_flexible_server.airflow.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}
+
 # Only the Airflow VM's public IP may reach the metadata DB
 resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_vm" {
   name             = "AllowAirflowVM"
