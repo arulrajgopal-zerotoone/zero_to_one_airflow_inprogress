@@ -35,7 +35,7 @@ airflow-dag-processor-1   Up About an hour
 airflow-webserver-1       Up 3 hours
 airflow-scheduler-1       Up 3 hours
 
-
+# to get airflow password
 cat /opt/airflow/simple_auth_manager_passwords.json.generated
 
 
