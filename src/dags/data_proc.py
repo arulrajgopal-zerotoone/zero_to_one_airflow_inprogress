@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 from airflow.sdk import DAG
 with DAG(
-    "demo_job",
+    "data_proc",
     default_args={
         "depends_on_past": False,
         "retries": 1,
