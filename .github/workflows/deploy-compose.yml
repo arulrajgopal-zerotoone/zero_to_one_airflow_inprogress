@@ -1,0 +1,66 @@
+name: Deploy Compose Stack
+
+# Pushes src/scripts/docker-compose.yml to the VM and restarts the stack, so a
+# change to the stack definition (e.g. adding a service) doesn't require
+# manually SSH-ing in and editing /opt/airflow/docker-compose.yml by hand.
+# Uses az vm run-command invoke (same as operate-vm.yml) to reach the VM
+# through the Azure Resource Manager control plane, since the NSG only allows
+# SSH/8080 from the developer's own IP.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/scripts/docker-compose.yml"
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Resource group containing the VM
+        required: false
+        default: rg-airflow-dev
+      vm_name:
+        description: VM name
+        required: false
+        default: vm-airflow-dev
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Push docker-compose.yml to VM and restart stack
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group || 'rg-airflow-dev' }}
+          VM_NAME: ${{ inputs.vm_name || 'vm-airflow-dev' }}
+        run: |
+          set -euo pipefail
+
+          # Base64-encode so the compose file's YAML anchors/quotes/$ signs
+          # can't collide with heredoc/shell parsing on the way over.
+          B64=$(base64 -w0 src/scripts/docker-compose.yml)
+
+          cat > /tmp/deploy_compose.sh <<EOF
+          #!/bin/bash
+          set -euo pipefail
+          echo "$B64" | base64 -d > /opt/airflow/docker-compose.yml
+          cd /opt/airflow
+          docker compose up -d
+          EOF
+
+          az vm run-command invoke \
+            -g "$RESOURCE_GROUP" -n "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "@/tmp/deploy_compose.sh" \
+            --query "value[0].message" -o tsv
+
+      - name: Azure logout
+        if: always()
+        run: az logout || true
