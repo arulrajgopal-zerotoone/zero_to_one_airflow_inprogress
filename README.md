@@ -67,8 +67,8 @@ Open [IAC/terraform/config/dev.tfvars](IAC/terraform/config/dev.tfvars) and:
 ```bash
 cd IAC/terraform/src
 terraform init
-terraform plan  -var-file=../config/dev.tfvars
-terraform apply -var-file=../config/dev.tfvars
+terraform plan  -var-file="../config/dev.tfvars"
+terraform apply -var-file="../config/dev.tfvars"
 ```
 
 Note the outputs (`vm_public_ip`, `storage_account_name`, `key_vault_name`,
@@ -125,7 +125,7 @@ Open `http://<vm_public_ip>:8080` and log in as `admin` with that password
 ## 3. Tear down
 
 ```bash
-terraform destroy -var-file=../config/dev.tfvars
+terraform destroy -var-file="../config/dev.tfvars"
 ```
 
 ## Local / manual setup (no Azure)

@@ -8,11 +8,12 @@
 resource_group_name = "rg-airflow-dev"
 
 # Set this to the developer's own IP before applying, e.g. "203.0.113.10/32"
-allowed_source_ip_cidr = "REPLACE_WITH_YOUR_IP/32"
+# allowed_source_ip_cidr = "REPLACE_WITH_YOUR_IP/32"
+allowed_source_ip_cidr = "27.5.83.181/32"
 
 vm_name = "vm-airflow-dev"
 
-postgres_server_name    = "psql-airflow-dev"
+postgres_server_name    = "kaninipro-psql-airflow-dev"
 postgres_database_name  = "airflow_metadata"
 
 # Must be globally unique, lowercase alphanumeric, 3-24 chars
