@@ -9,14 +9,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 from airflow.sdk import DAG
 with DAG(
-    "demo_job",
+    "ddl_setup",
     default_args={
         "depends_on_past": False,
         "retries": 1,
         "retry_delay": timedelta(minutes=5),
     },
-    description="This job is demo the solution for parent and child tables load without orphan even though the data arrival have inconsistency",
-    schedule="*/5 * * * *",
+    description="One-off/manual setup: creates the demo schema's tables and stored procedures",
+    schedule=None,
     start_date=datetime(2021, 1, 1),
     catchup=False,
     tags=["arul_added_dag"],
