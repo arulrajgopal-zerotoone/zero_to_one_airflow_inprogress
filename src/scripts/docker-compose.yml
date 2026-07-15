@@ -10,6 +10,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    # Task supervisor processes talk to the api-server over HTTP; must be the
+    # compose *service* name (`webserver`), not localhost — see
+    # airflow-task-failure-resolution.md.
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://webserver:8080/execution/
   # Whole AIRFLOW_HOME is bind-mounted so dags/, tasks/, logs/ (synced from
   # Blob Storage by install_docker.sh) and the auto-generated
   # simple_auth_manager_passwords.json.generated all land on the VM's disk.
