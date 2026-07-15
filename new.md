@@ -9,9 +9,17 @@ cd /opt/airflow/tasks
 
 
 
+
+http://20.219.110.239:8080/
+
+http://<ip_address>:8080/
+
 docker ps --format "table {{.Names}}\t{{.Status}}"
 
 NAMES                     STATUS
 airflow-dag-processor-1   Up About an hour
 airflow-webserver-1       Up 3 hours
 airflow-scheduler-1       Up 3 hours
+
+
+cat /opt/airflow/simple_auth_manager_passwords.json.generated
