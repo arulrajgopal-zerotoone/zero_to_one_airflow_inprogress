@@ -1,9 +1,9 @@
 name: Deploy DAGs
 
-# Pushes src/dags/, src/tasks/ and src/create_insert/ to the "dags" blob
-# container, the same az storage blob upload-batch calls documented in
-# README.md and used by docker_scripts/upload_dags.ps1 for a local run. The
-# VM's airflow-blob-sync.timer (installed by IAC/terraform/install_docker.sh)
+# Pushes src/dags/ and src/tasks/ to the "dags" blob container, the same
+# az storage blob upload-batch calls documented in README.md and used by
+# docker_scripts/upload_dags.ps1 for a local run. The VM's
+# airflow-blob-sync.timer (installed by IAC/terraform/install_docker.sh)
 # pulls these down within ~3 minutes.
 on:
   push:
@@ -11,7 +11,6 @@ on:
     paths:
       - "src/dags/**"
       - "src/tasks/**"
-      - "src/create_insert/**"
   workflow_dispatch:
 
 permissions:
@@ -28,7 +27,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Upload dags/, tasks/ and create_insert/ to Blob Storage
+      - name: Upload dags/ and tasks/ to Blob Storage
         env:
           KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME || 'kaninipro-kv-airflow-dev' }}
           SECRET_NAME: airflow-storage-connection-string
@@ -44,9 +43,6 @@ jobs:
 
           az storage blob upload-batch --connection-string "$CONN" \
             -d dags -s src/tasks --destination-path tasks --overwrite
-
-          az storage blob upload-batch --connection-string "$CONN" \
-            -d dags -s src/create_insert --destination-path create_insert --overwrite
 
       - name: Azure logout
         if: always()
