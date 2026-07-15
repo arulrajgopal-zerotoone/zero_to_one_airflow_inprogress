@@ -75,43 +75,50 @@ This takes a few minutes after `apply` finishes.
 
 ---
 
-# Deploy DAGs & Operate the VM
+# Deploy DAGs & the Compose Stack
 
-Once `terraform apply` has finished and the VM has booted,
-[.github/workflows/deploy-dags.yml](.github/workflows/deploy-dags.yml) and
-[.github/workflows/operate-vm.yml](.github/workflows/operate-vm.yml) push DAG
-code and operate the VM — no local `az login` session needed. One-time setup:
+Once `terraform apply` has finished and the VM has booted, two workflows keep
+the running VM in sync with this repo — no local `az login` session needed:
 
-- Add a repo secret `AZURE_CREDENTIALS` — the JSON output of an
-  `az ad sp create-for-rbac --sdk-auth`-style credential
-  (`{"clientId", "clientSecret", "subscriptionId", "tenantId"}`) for a
-  service principal that already has Key Vault "Get/List" on secrets
-  (same access the Terraform deployer in [keyvault.tf](IAC/terraform/src/keyvault.tf)
-  has) and Contributor on the VM.
-- Optionally add a repo variable `KEY_VAULT_NAME` if it differs from the
-  `kaninipro-kv-airflow-dev` default in [dev.tfvars](IAC/terraform/config/dev.tfvars).
+- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** runs automatically on
+  every push to `main` touching `src/dags/**` or `src/tasks/**`, or manually
+  via Actions → Deploy DAGs → Run workflow. It uploads `src/dags/` and
+  `src/tasks/` into the `dags` blob container; the VM's
+  `airflow-blob-sync.timer` (installed by
+  [install_docker.sh](src/scripts/install_docker.sh)) pulls them down within
+  ~3 minutes.
+- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** runs
+  automatically on every push to `main` touching
+  `src/scripts/docker-compose.yml`, or manually via Actions → Deploy Compose
+  Stack → Run workflow (optionally overriding the `resource_group`/`vm_name`
+  inputs). It pushes the compose file to the VM and runs
+  `docker compose up -d` via `az vm run-command invoke`, so a change to the
+  stack definition doesn't require SSH-ing in and editing
+  `/opt/airflow/docker-compose.yml` by hand.
 
-**Deploy DAGs** runs automatically on every push to `main` touching
-`src/dags/**` or `src/tasks/**`, or manually via
-Actions → Deploy DAGs → Run workflow.
+`az vm run-command invoke` goes through the Azure control plane rather than
+SSH, so **Deploy Compose Stack** works even though the NSG
+([network.tf](IAC/terraform/src/network.tf)) only allows SSH/8080 from the
+developer's own IP.
 
-**Operate VM** is manual-only (Actions → Operate VM → Run workflow) and takes
-an `action` input:
+One-time setup — add a repo secret `AZURE_CREDENTIALS`, the JSON output of an
+`az ad sp create-for-rbac --sdk-auth`-style credential
+(`{"clientId", "clientSecret", "subscriptionId", "tenantId"}`), for a service
+principal with:
 
-| action           | what it does                                                        |
-|------------------|----------------------------------------------------------------------|
-| `status`         | prints VM power state + `docker compose ps` output                  |
-| `start`          | `az vm start`                                                       |
-| `stop`           | `az vm deallocate` (stops billing for compute; disks are preserved) |
-| `restart-stack`  | `docker compose down && up -d` on the VM                            |
-| `sync-now`       | forces `airflow-blob-sync.service` instead of waiting ~3 minutes     |
-| `login-info`     | prints the webserver UI URL (`http://<vm-ip>:8080`) and the auto-generated `admin` password |
+- Key Vault "Get/List" on secrets (same access the Terraform deployer in
+  [keyvault.tf](IAC/terraform/src/keyvault.tf) has) — used by **Deploy DAGs**
+  to read the storage connection string.
+- Contributor on the VM — used by **Deploy Compose Stack** to run
+  `az vm run-command invoke`.
 
-These use `az vm run-command invoke` / `az vm start`/`deallocate`, which go
-through the Azure control plane rather than SSH — they work even though the
-NSG ([network.tf](IAC/terraform/src/network.tf)) only allows SSH/8080 from the
-developer's own IP. Provisioning/teardown (`terraform apply`/`destroy`) is
-**not** wired into CI since state is local ([versions.tf](IAC/terraform/src/versions.tf)
-has no remote backend configured) — keep running those from your machine per
-the Terraform section above.
+Optionally add a repo variable `KEY_VAULT_NAME` if it differs from the
+`kaninipro-kv-airflow-dev` default in [dev.tfvars](IAC/terraform/config/dev.tfvars).
+
+Provisioning/teardown (`terraform apply`/`destroy`) is **not** wired into CI
+since state is local ([versions.tf](IAC/terraform/src/versions.tf) has no
+remote backend configured) — keep running those from your machine per the
+Terraform section above. Starting/stopping the VM or reading the webserver
+admin password also isn't wired into CI currently — do those over SSH or
+`az vm start`/`az vm deallocate` directly.
 
