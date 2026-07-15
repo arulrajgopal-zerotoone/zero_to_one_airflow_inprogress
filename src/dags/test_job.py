@@ -24,7 +24,7 @@ with DAG(
     )
 
     t2 = BashOperator(
-        task_id="say_hello_updated1",
+        task_id="say_hello_world",
         depends_on_past=False,
         bash_command=f"python3 {BASE_DIR}/tasks/test.py"
 
