@@ -26,7 +26,7 @@ with DAG(
     t1 = BashOperator(
         task_id="create_tables_and_procs",
         depends_on_past=False,
-        bash_command=f"python3 {BASE_DIR}/create_insert/create_ddl.py"
+        bash_command=f"python3 {BASE_DIR}/tasks/create_ddl.py"
 
     )
 
