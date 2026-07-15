@@ -76,17 +76,17 @@ Note the outputs (`vm_public_ip`, `storage_account_name`, `key_vault_name`,
 `postgres_server_fqdn`) — you'll need them below.
 
 On first boot, the VM's `custom_data`
-([scripts/install_docker.sh](IAC/terraform/src/scripts/install_docker.sh))
+([scripts/install_docker.sh](src/scripts/install_docker.sh))
 installs Docker, pulls the Postgres connection string from Key Vault, and
 starts the webserver/scheduler stack
-([scripts/docker-compose.yml](IAC/terraform/src/scripts/docker-compose.yml)).
+([scripts/docker-compose.yml](src/scripts/docker-compose.yml)).
 This takes a few minutes after `apply` finishes.
 
 ## 5. Upload the DAGs and tasks to Blob Storage
 
 The VM syncs DAGs *from* Blob every 3 minutes (it doesn't read this git repo
-directly). Push this repo's `dags/` and `tasks/` folders into the `dags`
-container using the connection string Terraform generated:
+directly). Push this repo's `src/dags/` and `src/tasks/` folders into the
+`dags` container using the connection string Terraform generated:
 
 ```bash
 KEY_VAULT_NAME=<key_vault_name output>
@@ -94,10 +94,10 @@ CONN=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" \
   --name airflow-storage-connection-string --query value -o tsv)
 
 az storage blob upload-batch --connection-string "$CONN" \
-  -d dags -s dags --destination-path dags
+  -d dags -s src/dags --destination-path dags
 
 az storage blob upload-batch --connection-string "$CONN" \
-  -d dags -s tasks --destination-path tasks
+  -d dags -s src/tasks --destination-path tasks
 ```
 
 Re-run these two commands whenever DAG/task code changes; the VM's
