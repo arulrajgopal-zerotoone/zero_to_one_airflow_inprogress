@@ -34,8 +34,10 @@ export TF_VAR_tenant_id="<tenant>"
 export TF_VAR_subscription_id="$SUBSCRIPTION_ID"
 export TF_VAR_client_id="<appId>"
 export TF_VAR_client_secret="<password>"
-export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
+export TF_VAR_vm_admin_username="<pick-a-vm-admin-username>"
 export TF_VAR_vm_admin_password="<pick-a-strong-password>"
+export TF_VAR_postgres_admin_username="<pick-a-postgres-admin-username>"
+export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
 ```
 
 ## 3. Review `dev.tfvars`

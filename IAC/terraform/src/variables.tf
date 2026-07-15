@@ -73,7 +73,6 @@ variable "vm_size" {
 variable "vm_admin_username" {
   type        = string
   description = "Admin username for the Airflow VM"
-  default     = "azureuser"
 }
 
 variable "vm_admin_password" {
@@ -104,7 +103,6 @@ variable "postgres_database_name" {
 variable "postgres_admin_username" {
   type        = string
   description = "Administrator username for PostgreSQL Flexible Server"
-  default     = "airflowadmin"
 }
 
 variable "postgres_admin_password" {
