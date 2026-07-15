@@ -26,7 +26,6 @@ Key Vault holding the generated connection strings.
 - An Azure subscription
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5.0
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), logged in (`az login`)
-- An SSH key pair for VM access (`ssh-keygen -t ed25519 -f ~/.ssh/airflow_vm` if you don't have one)
 - Your current public IP (`curl -s ifconfig.me`) — the NSG only allows SSH/8080 from this IP
 
 ## 1. Create a service principal for Terraform
@@ -52,7 +51,7 @@ export TF_VAR_subscription_id="$SUBSCRIPTION_ID"
 export TF_VAR_client_id="<appId>"
 export TF_VAR_client_secret="<password>"
 export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
-export TF_VAR_vm_ssh_public_key="$(cat ~/.ssh/airflow_vm.pub)"
+export TF_VAR_vm_admin_password="<pick-a-strong-password>"
 ```
 
 ## 3. Review `dev.tfvars`
@@ -82,7 +81,14 @@ starts the webserver/scheduler stack
 ([scripts/docker-compose.yml](src/scripts/docker-compose.yml)).
 This takes a few minutes after `apply` finishes.
 
-## 5. Upload the DAGs and tasks to Blob Storage
+---
+
+# Deploy DAGs & Operate the VM
+
+Once `terraform apply` has finished and the VM has booted, use these steps to
+push DAG code, log in, and tear things down.
+
+## 1. Upload the DAGs and tasks to Blob Storage
 
 The VM syncs DAGs *from* Blob every 3 minutes (it doesn't read this git repo
 directly). Push this repo's `src/dags/` and `src/tasks/` folders into the
@@ -103,11 +109,11 @@ az storage blob upload-batch --connection-string "$CONN" \
 Re-run these two commands whenever DAG/task code changes; the VM's
 `airflow-blob-sync.timer` picks them up within ~3 minutes.
 
-## 6. Log in to the webserver UI
+## 2. Log in to the webserver UI
 
 ```bash
 VM_IP=<vm_public_ip output>
-ssh azureuser@$VM_IP -i ~/.ssh/airflow_vm   # matches vm_admin_username in variables.tf
+ssh azureuser@$VM_IP   # matches vm_admin_username in variables.tf; enter TF_VAR_vm_admin_password when prompted
 
 sudo docker compose -f /opt/airflow/docker-compose.yml ps
 cat /opt/airflow/simple_auth_manager_passwords.json.generated   # admin password
@@ -116,15 +122,13 @@ cat /opt/airflow/simple_auth_manager_passwords.json.generated   # admin password
 Open `http://<vm_public_ip>:8080` and log in as `admin` with that password
 (same convention as the local venv setup below).
 
-## 7. Tear down
+## 3. Tear down
 
 ```bash
 terraform destroy -var-file=../config/dev.tfvars
 ```
 
----
-
-# Local / manual setup (no Azure)
+## Local / manual setup (no Azure)
 
 For running everything on a single machine without the Terraform stack, see
 [old_README.md](old_README.md) — installs Postgres + a Python venv + Airflow

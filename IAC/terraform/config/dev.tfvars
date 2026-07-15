@@ -1,6 +1,6 @@
 # variables
 #
-# Sensitive values (postgres_admin_password, vm_ssh_public_key, tenant_id,
+# Sensitive values (postgres_admin_password, vm_admin_password, tenant_id,
 # subscription_id, client_id, client_secret) are intentionally NOT set here —
 # pass them via TF_VAR_<name> environment variables or -var on the CLI/CI so
 # secrets never land in source control.

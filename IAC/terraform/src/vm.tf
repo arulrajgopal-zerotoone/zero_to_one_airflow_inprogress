@@ -6,14 +6,10 @@ resource "azurerm_linux_virtual_machine" "airflow" {
   size                = var.vm_size
 
   admin_username                  = var.vm_admin_username
-  disable_password_authentication = true
+  admin_password                  = var.vm_admin_password
+  disable_password_authentication = false
 
   network_interface_ids = [azurerm_network_interface.vm.id]
-
-  admin_ssh_key {
-    username   = var.vm_admin_username
-    public_key = var.vm_ssh_public_key
-  }
 
   os_disk {
     caching              = "ReadWrite"

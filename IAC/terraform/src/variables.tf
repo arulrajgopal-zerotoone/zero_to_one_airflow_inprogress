@@ -76,9 +76,10 @@ variable "vm_admin_username" {
   default     = "azureuser"
 }
 
-variable "vm_ssh_public_key" {
+variable "vm_admin_password" {
   type        = string
-  description = "SSH public key for the Airflow VM admin user (password auth is disabled)"
+  description = "Admin password for the Airflow VM's admin user (SSH key auth is disabled)"
+  sensitive   = true
 }
 
 variable "vm_os_disk_size_gb" {
