@@ -30,14 +30,14 @@ with DAG(
     t2 = BashOperator(
         task_id="create_tables_and_procs",
         depends_on_past=False,
-        bash_command=f"python3 {BASE_DIR}/tasks/create_ddl.py"
+        bash_command=f"python3 {BASE_DIR}/create_insert/create_ddl.py"
 
     )
 
     t3 = BashOperator(
         task_id="insert_data",
         depends_on_past=False,
-        bash_command=f"python3 {BASE_DIR}/tasks/insert_data.py"
+        bash_command=f"python3 {BASE_DIR}/create_insert/insert_data.py"
 
     )
 
