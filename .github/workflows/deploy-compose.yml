@@ -43,6 +43,7 @@ jobs:
           KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME || 'kaninipro-kv-airflow-dev' }}
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_AIRFLOW_DB: ${{ secrets.POSTGRES_AIRFLOW_DB }}
+          POSTGRES_DATA_DB: ${{ secrets.POSTGRES_DATA_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
@@ -65,8 +66,8 @@ jobs:
 
           # Same treatment for the DB creds, so a password containing
           # quotes/$ can't break out of the heredoc below.
-          ENV_B64=$(printf 'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=%s\nPOSTGRES_HOST=%s\nPOSTGRES_AIRFLOW_DB=%s\nPOSTGRES_USER=%s\nPOSTGRES_PASSWORD=%s\n' \
-            "$SQL_ALCHEMY_CONN" "$POSTGRES_HOST" "$POSTGRES_AIRFLOW_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" | base64 -w0)
+          ENV_B64=$(printf 'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=%s\nPOSTGRES_HOST=%s\nPOSTGRES_AIRFLOW_DB=%s\nPOSTGRES_DATA_DB=%s\nPOSTGRES_USER=%s\nPOSTGRES_PASSWORD=%s\n' \
+            "$SQL_ALCHEMY_CONN" "$POSTGRES_HOST" "$POSTGRES_AIRFLOW_DB" "$POSTGRES_DATA_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" | base64 -w0)
 
           cat > /tmp/deploy_compose.sh <<EOF
           #!/bin/bash
@@ -78,7 +79,7 @@ jobs:
           # past the next push to main.
           touch /opt/airflow/.env
           echo "$ENV_B64" | base64 -d > /tmp/pg.env
-          grep -v -E '^(AIRFLOW__DATABASE__SQL_ALCHEMY_CONN|POSTGRES_HOST|POSTGRES_AIRFLOW_DB|POSTGRES_USER|POSTGRES_PASSWORD)=' \
+          grep -v -E '^(AIRFLOW__DATABASE__SQL_ALCHEMY_CONN|POSTGRES_HOST|POSTGRES_AIRFLOW_DB|POSTGRES_DATA_DB|POSTGRES_USER|POSTGRES_PASSWORD)=' \
             /opt/airflow/.env > /tmp/airflow.env.new || true
           cat /tmp/pg.env >> /tmp/airflow.env.new
           mv /tmp/airflow.env.new /opt/airflow/.env
