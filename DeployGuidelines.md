@@ -58,10 +58,10 @@ Use the `vm_public_ip` output from Terraform, and the username/password from:
 
 Pushing to the `main` branch triggers the GitHub workflows that keep the VM in sync with this repo — no local `az login` session needed:
 
-- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** — triggers on a push touching `docker-compose.yml`. Pushes the compose file to the VM and runs `docker compose up -d` via `az vm run-command invoke`, and upserts the metadata-DB connection string plus the data-DB creds into `/opt/airflow/.env` on every run.
-- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** — triggers on a push touching `src/dags/**` or `src/tasks/**`. Uploads `src/dags/` and `src/tasks/` to the `dags` blob container, then immediately tells the VM (via `az vm run-command invoke`) to download-batch them down to `/opt/airflow` and upload-batch its logs up.
+- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** — triggers on a push touching `docker-compose.yml`. Updates the running stack on the VM to match the new compose file.
+- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** — triggers on a push touching `src/dags/**` or `src/tasks/**`. Publishes the new DAGs/tasks to storage and syncs them onto the VM.
 
-Both use `az vm run-command invoke`, which goes through the Azure control plane rather than SSH — this works even though the NSG only allows SSH/8080 from the developer's own IP. Note the VM has no periodic sync timer or persistent sync script of its own ([install_docker.sh](IAC/terraform/install_docker.sh) only sets the stack up on first boot); each workflow pushes state to the VM itself on every run.
+Note the VM has no periodic sync timer or persistent sync script of its own ([install_docker.sh](IAC/terraform/install_docker.sh) only sets the stack up on first boot); each workflow pushes state to the VM itself on every run.
 
 Both workflows can also be triggered manually via Actions → *workflow name* → Run workflow (`workflow_dispatch`), optionally overriding the `resource_group`/`vm_name` inputs.
 
