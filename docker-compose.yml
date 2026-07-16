@@ -2,11 +2,12 @@
 # Architecture.md. LocalExecutor runs workers as subprocesses of the
 # scheduler, so there is no separate worker container.
 #
-# AIRFLOW__DATABASE__SQL_ALCHEMY_CONN is read from ./.env (written by
-# IAC/terraform/install_docker.sh from the Key Vault secret at VM boot).
-# POSTGRES_HOST/DB/USER/PASSWORD are also read from ./.env, upserted by
-# .github/workflows/deploy-compose.yml from repo secrets on every deploy —
-# these are the "data" DB credentials the create_insert/tasks scripts use
+# AIRFLOW__DATABASE__SQL_ALCHEMY_CONN and POSTGRES_HOST/DB/USER/PASSWORD are
+# read from ./.env, upserted on every deploy by
+# .github/workflows/deploy-compose.yml (the former from the Key Vault secret,
+# the latter from repo secrets); install_docker.sh also writes the former
+# once at VM boot so the very first `docker compose up -d` has it too.
+# POSTGRES_HOST/DB/USER/PASSWORD are the "data" DB credentials the create_insert/tasks scripts use
 # (os.environ lookups), not the Airflow metadata DB above. POSTGRES_HOST here
 # appends the Azure PostgreSQL suffix, so the raw secret is just the server
 # name (matches TF_VAR_postgres_server_name) and tasks read it as-is.

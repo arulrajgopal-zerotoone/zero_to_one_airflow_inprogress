@@ -40,6 +40,7 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ inputs.resource_group || 'rg-airflow-dev' }}
           VM_NAME: ${{ inputs.vm_name || 'vm-airflow-dev' }}
+          KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME || 'kaninipro-kv-airflow-dev' }}
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_AIRFLOW_DB: ${{ secrets.POSTGRES_AIRFLOW_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -51,22 +52,33 @@ jobs:
           # can't collide with heredoc/shell parsing on the way over.
           B64=$(base64 -w0 docker-compose.yml)
 
-          # Same treatment for the data-DB creds, so a password containing
+          # Fetch the metadata-DB connection string ourselves rather than
+          # relying on install_docker.sh's one-time write at VM boot — if
+          # that cloud-init step ever failed (e.g. the Azure CLI installer
+          # breaking, or a managed-identity/Key Vault RBAC propagation
+          # delay right after VM creation), AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+          # would stay blank in .env forever, since nothing else ever wrote it.
+          SQL_ALCHEMY_CONN=$(az keyvault secret show \
+            --vault-name "$KEY_VAULT_NAME" \
+            --name airflow-postgres-connection-string \
+            --query value -o tsv)
+
+          # Same treatment for the DB creds, so a password containing
           # quotes/$ can't break out of the heredoc below.
-          ENV_B64=$(printf 'POSTGRES_HOST=%s\nPOSTGRES_AIRFLOW_DB=%s\nPOSTGRES_USER=%s\nPOSTGRES_PASSWORD=%s\n' \
-            "$POSTGRES_HOST" "$POSTGRES_AIRFLOW_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" | base64 -w0)
+          ENV_B64=$(printf 'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=%s\nPOSTGRES_HOST=%s\nPOSTGRES_AIRFLOW_DB=%s\nPOSTGRES_USER=%s\nPOSTGRES_PASSWORD=%s\n' \
+            "$SQL_ALCHEMY_CONN" "$POSTGRES_HOST" "$POSTGRES_AIRFLOW_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" | base64 -w0)
 
           cat > /tmp/deploy_compose.sh <<EOF
           #!/bin/bash
           set -euo pipefail
           echo "$B64" | base64 -d > /opt/airflow/docker-compose.yml
 
-          # Upsert the data-DB creds into .env, leaving
-          # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN (written once at VM boot by
-          # install_docker.sh from the Key Vault secret) untouched.
+          # Upsert both the metadata-DB conn string and the data-DB creds
+          # into .env on every deploy, so a bad/missing value never persists
+          # past the next push to main.
           touch /opt/airflow/.env
           echo "$ENV_B64" | base64 -d > /tmp/pg.env
-          grep -v -E '^(POSTGRES_HOST|POSTGRES_AIRFLOW_DB|POSTGRES_USER|POSTGRES_PASSWORD)=' \
+          grep -v -E '^(AIRFLOW__DATABASE__SQL_ALCHEMY_CONN|POSTGRES_HOST|POSTGRES_AIRFLOW_DB|POSTGRES_USER|POSTGRES_PASSWORD)=' \
             /opt/airflow/.env > /tmp/airflow.env.new || true
           cat /tmp/pg.env >> /tmp/airflow.env.new
           mv /tmp/airflow.env.new /opt/airflow/.env
