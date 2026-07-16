@@ -38,6 +38,9 @@ export TF_VAR_vm_admin_username="<pick-a-vm-admin-username>"
 export TF_VAR_vm_admin_password="<pick-a-strong-password>"
 export TF_VAR_postgres_admin_username="<pick-a-postgres-admin-username>"
 export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
+export TF_VAR_postgres_server_name="<globally-unique-psql-server-name>"
+export TF_VAR_postgres_database_name="<airflow-metadata-db-name>"
+export TF_VAR_postgres_data_database_name="<data-db-name>"
 ```
 
 ## 3. Review `dev.tfvars`

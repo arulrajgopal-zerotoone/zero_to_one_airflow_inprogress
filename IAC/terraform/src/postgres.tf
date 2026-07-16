@@ -27,7 +27,7 @@ resource "azurerm_postgresql_flexible_server_database" "metadata" {
 }
 
 resource "azurerm_postgresql_flexible_server_database" "data" {
-  name      = "data"
+  name      = var.postgres_data_database_name
   server_id = azurerm_postgresql_flexible_server.airflow.id
   charset   = "UTF8"
   collation = "en_US.utf8"

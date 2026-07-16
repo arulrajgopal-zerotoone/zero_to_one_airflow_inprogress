@@ -91,13 +91,17 @@ variable "vm_os_disk_size_gb" {
 # Azure Database for PostgreSQL Flexible Server (Airflow metadata DB)
 variable "postgres_server_name" {
   type        = string
-  description = "Name of the PostgreSQL Flexible Server (must be globally unique)"
+  description = "Name of the PostgreSQL Flexible Server (must be globally unique). Pass via TF_VAR_postgres_server_name."
 }
 
 variable "postgres_database_name" {
   type        = string
-  description = "Name of the Airflow metadata database"
-  default     = "airflow_metadata"
+  description = "Name of the Airflow metadata database. Pass via TF_VAR_postgres_database_name."
+}
+
+variable "postgres_data_database_name" {
+  type        = string
+  description = "Name of the secondary (data) database. Pass via TF_VAR_postgres_data_database_name."
 }
 
 variable "postgres_admin_username" {

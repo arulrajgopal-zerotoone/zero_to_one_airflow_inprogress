@@ -18,6 +18,10 @@ output "postgres_database_name" {
   value = azurerm_postgresql_flexible_server_database.metadata.name
 }
 
+output "postgres_data_database_name" {
+  value = azurerm_postgresql_flexible_server_database.data.name
+}
+
 output "storage_account_name" {
   value = azurerm_storage_account.airflow.name
 }

@@ -1,7 +1,9 @@
 Steps to deploy and run the dag
-1.Infrastructure prepare - go through terraform.md 
+1.Infrastructure prepare - go through terraform.md and all infra through azure resources.
+All the needed infra kept here. --IAC\terraform
+capture the output from the terraform apply will be used later.
 
-2.GitHub Secrets to set 
+2.Setup github secrtes
     AZURE_CREDENTIALS in below format
     {
         "clientId": "xxxx",
@@ -14,6 +16,9 @@ Steps to deploy and run the dag
     POSTGRES_DB
     POSTGRES_USER
     POSTGRES_PASSWORD
+
+Note: POSTGRES_HOST is from terraform output.
+
 
 
 
