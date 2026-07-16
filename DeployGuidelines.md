@@ -56,14 +56,20 @@ Use the `vm_public_ip` output from Terraform, and the username/password from:
 
 ## 5. Push to `main`
 
-Pushing to the `main` branch triggers the GitHub workflows that:
+Pushing to the `main` branch triggers the GitHub workflows that keep the VM in sync with this repo — no local `az login` session needed:
 
-- Deploy the Airflow Docker Compose stack ([deploy-compose.yml](.github/workflows/deploy-compose.yml))
-- Promote the DAGs and tasks to the storage account ([deploy-dags.yml](.github/workflows/deploy-dags.yml))
+- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** — triggers on a push touching `docker-compose.yml`. Pushes the compose file to the VM and runs `docker compose up -d` via `az vm run-command invoke`, and upserts the metadata-DB connection string plus the data-DB creds into `/opt/airflow/.env` on every run.
+- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** — triggers on a push touching `src/dags/**` or `src/tasks/**`. Uploads `src/dags/` and `src/tasks/` to the `dags` blob container, then immediately tells the VM (via `az vm run-command invoke`) to download-batch them down to `/opt/airflow` and upload-batch its logs up.
 
-Once the DAGs/tasks land in storage, they get synced onto the VM by the sync logic in [install_docker.sh](IAC/terraform/install_docker.sh).
+Both use `az vm run-command invoke`, which goes through the Azure control plane rather than SSH — this works even though the NSG only allows SSH/8080 from the developer's own IP. Note the VM has no periodic sync timer or persistent sync script of its own ([install_docker.sh](IAC/terraform/install_docker.sh) only sets the stack up on first boot); each workflow pushes state to the VM itself on every run.
 
-## 6. Log in to Airflow and test it
+Both workflows can also be triggered manually via Actions → *workflow name* → Run workflow (`workflow_dispatch`), optionally overriding the `resource_group`/`vm_name` inputs.
+
+## 6. Manually sync DAGs (one-off)
+
+DAG/task sync onto the VM isn't automatic outside of a push to `main` — if storage and the VM ever drift (e.g. after a VM restart, or a change that didn't go through `main`), re-sync it as a one-off by running **[deploy-dags.yml](.github/workflows/deploy-dags.yml)** manually: Actions → Deploy DAGs → Run workflow. This re-uploads `src/dags/`/`src/tasks/` to the `dags` blob container and re-triggers the download-batch sync onto the VM, without needing a new commit.
+
+## 7. Log in to Airflow and test it
 
 - **Airflow host:** `http://<vm_public_ip>:8080/` (`vm_public_ip` from the Terraform output)
 - **Username:** `admin`
@@ -75,11 +81,11 @@ Once the DAGs/tasks land in storage, they get synced onto the VM by the sync log
 
 Once logged in, wait a few minutes, then run the `test_job` DAG to validate the deployment.
 
-## 7. Run the actual jobs
+## 8. Run the actual jobs
 
 Run the `ddl_setup` DAG first, then the `data_proc` DAG (actual data processing).
 
-## 8. Additional info
+## 9. Additional info
 
 **DAGs and tasks path on the VM:**
 
