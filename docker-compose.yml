@@ -21,7 +21,7 @@ x-airflow-common: &airflow-common
     # airflow-task-failure-resolution.md.
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://webserver:8080/execution/
     POSTGRES_HOST: ${POSTGRES_HOST}.postgres.database.azure.com
-    POSTGRES_DB: ${POSTGRES_AIRFLOW_DB}
+    POSTGRES_AIRFLOW_DB: ${POSTGRES_AIRFLOW_DB}
     POSTGRES_USER: ${POSTGRES_USER}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   # Whole AIRFLOW_HOME is bind-mounted so dags/, tasks/, logs/ (synced from
