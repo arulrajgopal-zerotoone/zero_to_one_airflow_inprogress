@@ -1,6 +1,6 @@
-# Airflow VM stack — matches the "Airflow VM - Docker Compose" box in
-# Architecture.md. LocalExecutor runs workers as subprocesses of the
-# scheduler, so there is no separate worker container.
+# Airflow VM stack — matches the "Airflow VM - Docker Compose" box in the
+# Technical architecture diagram in README.md. LocalExecutor runs workers as
+# subprocesses of the scheduler, so there is no separate worker container.
 #
 # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN and POSTGRES_HOST/DB/USER/PASSWORD are
 # read from ./.env, upserted on every deploy by
