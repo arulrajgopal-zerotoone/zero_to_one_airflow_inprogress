@@ -26,16 +26,18 @@ Capture the output from `terraform apply` — it is used in the steps below.
 Plus the data-DB credentials:
 
 - `POSTGRES_HOST`
-- `POSTGRES_DB`
+- `POSTGRES_DATA_DB`
+- `POSTGRES_AIRFLOW_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 
 > **Note:** these Postgres secrets must match what was provided locally during the Terraform deployment. Reference:
 >
-> | GitHub secret       | Terraform variable                    |
+> | GitHub secret        | Terraform variable                     |
 > |----------------------|----------------------------------------|
 > | `POSTGRES_HOST`      | `TF_VAR_postgres_server_name`          |
-> | `POSTGRES_DB`        | `TF_VAR_postgres_data_database_name`   |
+> | `POSTGRES_DATA_DB`   | `TF_VAR_postgres_data_database_name`   |
+> | `POSTGRES_AIRFLOW_DB`| `TF_VAR_postgres_database_name`        |
 > | `POSTGRES_USER`      | `TF_VAR_postgres_admin_username`       |
 > | `POSTGRES_PASSWORD`  | `TF_VAR_postgres_admin_password`       |
 

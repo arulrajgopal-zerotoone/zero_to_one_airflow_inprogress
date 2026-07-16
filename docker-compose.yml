@@ -7,7 +7,9 @@
 # POSTGRES_HOST/DB/USER/PASSWORD are also read from ./.env, upserted by
 # .github/workflows/deploy-compose.yml from repo secrets on every deploy —
 # these are the "data" DB credentials the create_insert/tasks scripts use
-# (os.environ lookups), not the Airflow metadata DB above.
+# (os.environ lookups), not the Airflow metadata DB above. POSTGRES_HOST here
+# appends the Azure PostgreSQL suffix, so the raw secret is just the server
+# name (matches TF_VAR_postgres_server_name) and tasks read it as-is.
 x-airflow-common: &airflow-common
   image: apache/airflow:3.0.2
   environment: &airflow-common-env
@@ -18,8 +20,8 @@ x-airflow-common: &airflow-common
     # compose *service* name (`webserver`), not localhost — see
     # airflow-task-failure-resolution.md.
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://webserver:8080/execution/
-    POSTGRES_HOST: ${POSTGRES_HOST}
-    POSTGRES_DB: ${POSTGRES_DB}
+    POSTGRES_HOST: ${POSTGRES_HOST}.postgres.database.azure.com
+    POSTGRES_DB: ${POSTGRES_AIRFLOW_DB}
     POSTGRES_USER: ${POSTGRES_USER}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   # Whole AIRFLOW_HOME is bind-mounted so dags/, tasks/, logs/ (synced from
