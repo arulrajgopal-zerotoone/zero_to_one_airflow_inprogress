@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 # Connect to the database
 conn = psycopg2.connect(
-    host=os.environ["POSTGRES_HOST"],
+    host=os.environ["POSTGRES_HOST"] + ".postgres.database.azure.com",
     database=os.environ["POSTGRES_DB"],
     user=os.environ["POSTGRES_USER"],
     password=os.environ["POSTGRES_PASSWORD"]
