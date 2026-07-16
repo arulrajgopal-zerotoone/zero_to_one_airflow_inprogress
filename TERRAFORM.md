@@ -44,7 +44,7 @@ export TF_VAR_postgres_admin_password="<pick-a-strong-password>"
 
 Open [IAC/terraform/config/dev.tfvars](IAC/terraform/config/dev.tfvars) and:
 
-- Set `allowed_source_ip_cidr` to `"<your-ip>/32"`
+- Set `allowed_source_ip` to `"<your-ip>"`
 - Check `storage_account_name` / `key_vault_name` are still globally unique
   (rename if `terraform apply` reports a name collision)
 

@@ -40,3 +40,11 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_vm" {
   start_ip_address = azurerm_public_ip.vm.ip_address
   end_ip_address   = azurerm_public_ip.vm.ip_address
 }
+
+# Also let the developer's own IP (allowed_source_ip) reach the metadata DB directly
+resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_dev" {
+  name             = "AllowDevIP"
+  server_id        = azurerm_postgresql_flexible_server.airflow.id
+  start_ip_address = var.allowed_source_ip
+  end_ip_address   = var.allowed_source_ip
+}

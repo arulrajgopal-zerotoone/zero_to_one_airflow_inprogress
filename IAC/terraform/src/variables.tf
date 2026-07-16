@@ -51,9 +51,9 @@ variable "nsg_name" {
   default     = "nsg-airflow"
 }
 
-variable "allowed_source_ip_cidr" {
+variable "allowed_source_ip" {
   type        = string
-  description = "CIDR allowed to reach the Airflow VM over SSH (22) and the webserver UI (443/8080). Use the developer's IP/32 — never 0.0.0.0/0."
+  description = "Single IP address allowed to reach the Airflow VM over SSH (22) and the webserver UI (443/8080), and the Postgres metadata DB. Use the developer's own IP only — never a broad range or 0.0.0.0/0."
 }
 
 

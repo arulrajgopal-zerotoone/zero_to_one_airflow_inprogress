@@ -41,4 +41,4 @@ cat /opt/airflow/simple_auth_manager_passwords.json.generated
 
 CHANGES TO BE DONE:
 1.document all steps by combining new.md and readme.md
-2.set allowed_source_ip_cidr dynamic  -- in vm and postgres sql server
+2.set allowed_source_ip dynamic  -- in vm and postgres sql server
