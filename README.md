@@ -14,10 +14,10 @@ the running VM in sync with this repo — no local `az login` session needed:
 - **[Deploy DAGs](.github/workflows/deploy-dags.yml)** runs automatically on
   every push to `main` touching `src/dags/**` or `src/tasks/**`, or manually
   via Actions → Deploy DAGs → Run workflow. It uploads `src/dags/` and
-  `src/tasks/` into the `dags` blob container; the VM's
-  `airflow-blob-sync.timer` (installed by
-  [install_docker.sh](IAC/terraform/install_docker.sh)) pulls them down within
-  ~3 minutes.
+  `src/tasks/` into the `dags` blob container, then immediately tells the VM
+  (via `az vm run-command invoke`) to download-batch them down to
+  `/opt/airflow` and upload-batch its logs up — no polling delay, and no
+  persistent sync script on the VM to keep in sync with this workflow.
 - **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** runs
   automatically on every push to `main` touching
   `docker-compose.yml`, or manually via Actions → Deploy Compose
@@ -40,11 +40,14 @@ principal with:
 - Key Vault "Get/List" on secrets (same access the Terraform deployer in
   [keyvault.tf](IAC/terraform/src/keyvault.tf) has) — used by **Deploy DAGs**
   to read the storage connection string.
-- Contributor on the VM — used by **Deploy Compose Stack** to run
-  `az vm run-command invoke`.
+- Contributor on the VM — used by **Deploy DAGs** and **Deploy Compose
+  Stack** to run `az vm run-command invoke`.
 
-Optionally add a repo variable `KEY_VAULT_NAME` if it differs from the
-`kaninipro-kv-airflow-dev` default in [dev.tfvars](IAC/terraform/config/dev.tfvars).
+Optionally add repo variables `KEY_VAULT_NAME`, `STORAGE_ACCOUNT_NAME`,
+`DAGS_CONTAINER_NAME`, and `LOGS_CONTAINER_NAME` if any differ from the
+defaults in [dev.tfvars](IAC/terraform/config/dev.tfvars) /
+[variables.tf](IAC/terraform/src/variables.tf) (`kaninipro-kv-airflow-dev`,
+`kaniniprostairflowdev`, `dags`, `logs`).
 
 Also add repo secrets `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER` and
 `POSTGRES_PASSWORD` — credentials for the "data" database that

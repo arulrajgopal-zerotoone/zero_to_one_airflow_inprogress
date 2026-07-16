@@ -8,9 +8,6 @@ set -euxo pipefail
 ADMIN_USER="${admin_username}"
 KEY_VAULT_NAME="${key_vault_name}"
 POSTGRES_SECRET_NAME="${postgres_secret_name}"
-STORAGE_ACCOUNT_NAME="${storage_account_name}"
-DAGS_CONTAINER_NAME="${dags_container_name}"
-LOGS_CONTAINER_NAME="${logs_container_name}"
 
 AIRFLOW_DIR=/opt/airflow
 
@@ -52,56 +49,6 @@ chmod 600 "$AIRFLOW_DIR/.env"
 cat > "$AIRFLOW_DIR/docker-compose.yml" <<'COMPOSE_EOF'
 ${docker_compose_content}
 COMPOSE_EOF
-
-# --- DAG/task sync down from Blob, log sync up to Blob ----------------------
-# Upload dags/ and tasks/ into the "dags" container using the same relative
-# paths (e.g. blob "dags/demo_job.py", "tasks/create_ddl.py") so
-# download-batch reconstructs them under $AIRFLOW_DIR correctly.
-cat > /usr/local/bin/airflow-blob-sync.sh <<SYNC_EOF
-#!/bin/bash
-set -euo pipefail
-az storage blob download-batch \
-  --account-name "$STORAGE_ACCOUNT_NAME" \
-  --auth-mode login \
-  --source "$DAGS_CONTAINER_NAME" \
-  --destination "$AIRFLOW_DIR" \
-  --overwrite true >/var/log/airflow-blob-sync.log 2>&1
-
-az storage blob upload-batch \
-  --account-name "$STORAGE_ACCOUNT_NAME" \
-  --auth-mode login \
-  --destination "$LOGS_CONTAINER_NAME" \
-  --source "$AIRFLOW_DIR/logs" \
-  --overwrite true >>/var/log/airflow-blob-sync.log 2>&1
-SYNC_EOF
-chmod +x /usr/local/bin/airflow-blob-sync.sh
-
-cat > /etc/systemd/system/airflow-blob-sync.service <<'UNIT_EOF'
-[Unit]
-Description=Sync Airflow DAGs down from / logs up to Blob Storage
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/airflow-blob-sync.sh
-UNIT_EOF
-
-cat > /etc/systemd/system/airflow-blob-sync.timer <<'TIMER_EOF'
-[Unit]
-Description=Run airflow-blob-sync every 3 minutes
-
-[Timer]
-OnBootSec=30s
-OnUnitActiveSec=3min
-
-[Install]
-WantedBy=timers.target
-TIMER_EOF
-
-systemctl daemon-reload
-systemctl enable --now airflow-blob-sync.timer
-
-# Prime dags/tasks once before the first container start.
-/usr/local/bin/airflow-blob-sync.sh || true
 
 # --- Bring up the stack ------------------------------------------------
 cd "$AIRFLOW_DIR"

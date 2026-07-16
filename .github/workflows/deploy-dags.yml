@@ -2,9 +2,10 @@ name: Deploy DAGs
 
 # Pushes src/dags/ and src/tasks/ to the "dags" blob container, the same
 # az storage blob upload-batch calls documented in README.md and used by
-# docker_scripts/upload_dags.ps1 for a local run. The VM's
-# airflow-blob-sync.timer (installed by IAC/terraform/install_docker.sh)
-# pulls these down within ~3 minutes.
+# docker_scripts/upload_dags.ps1 for a local run. Immediately after, it tells
+# the VM to pull them down (and push its logs up) right away via
+# `az vm run-command invoke`, rather than waiting on a poll — the VM has no
+# periodic sync timer or persistent sync script (see install_docker.sh).
 on:
   push:
     branches: [main]
@@ -12,6 +13,15 @@ on:
       - "src/dags/**"
       - "src/tasks/**"
   workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Resource group containing the VM
+        required: false
+        default: rg-airflow-dev
+      vm_name:
+        description: VM name
+        required: false
+        default: vm-airflow-dev
 
 permissions:
   contents: read
@@ -43,6 +53,44 @@ jobs:
 
           az storage blob upload-batch --connection-string "$CONN" \
             -d dags -s src/tasks --destination-path tasks --overwrite
+
+      - name: Sync dags/tasks down and logs up on the VM
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group || 'rg-airflow-dev' }}
+          VM_NAME: ${{ inputs.vm_name || 'vm-airflow-dev' }}
+          STORAGE_ACCOUNT_NAME: ${{ vars.STORAGE_ACCOUNT_NAME || 'kaniniprostairflowdev' }}
+          DAGS_CONTAINER_NAME: ${{ vars.DAGS_CONTAINER_NAME || 'dags' }}
+          LOGS_CONTAINER_NAME: ${{ vars.LOGS_CONTAINER_NAME || 'logs' }}
+        run: |
+          set -euo pipefail
+
+          # Same two az storage commands install_docker.sh used to run from
+          # a persistent /usr/local/bin/airflow-blob-sync.sh — sent inline
+          # via run-command invoke instead, so there's nothing to keep in
+          # sync on the VM itself.
+          cat > /tmp/sync_vm.sh <<EOF
+          #!/bin/bash
+          set -euo pipefail
+          az storage blob download-batch \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
+            --auth-mode login \
+            --source "$DAGS_CONTAINER_NAME" \
+            --destination /opt/airflow \
+            --overwrite true
+
+          az storage blob upload-batch \
+            --account-name "$STORAGE_ACCOUNT_NAME" \
+            --auth-mode login \
+            --destination "$LOGS_CONTAINER_NAME" \
+            --source /opt/airflow/logs \
+            --overwrite true
+          EOF
+
+          az vm run-command invoke \
+            -g "$RESOURCE_GROUP" -n "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "@/tmp/sync_vm.sh" \
+            --query "value[0].message" -o tsv
 
       - name: Azure logout
         if: always()

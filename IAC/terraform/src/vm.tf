@@ -29,16 +29,15 @@ resource "azurerm_linux_virtual_machine" "airflow" {
   }
 
   # Installs Docker Engine + the Compose plugin, then renders and starts
-  # docker-compose.yml (webserver/scheduler on LocalExecutor), wired
-  # to the Postgres metadata DB via the Key Vault secret and syncing
-  # dags/tasks/logs against Blob Storage using the VM's managed identity.
+  # docker-compose.yml (webserver/scheduler on LocalExecutor), wired to the
+  # Postgres metadata DB via the Key Vault secret. DAG/task sync down from
+  # and log sync up to Blob Storage happens after boot, via GitHub Actions'
+  # deploy-dags.yml calling az vm run-command invoke — not part of this
+  # cloud-init step.
   custom_data = base64encode(templatefile("${path.module}/../install_docker.sh", {
     admin_username         = var.vm_admin_username
     key_vault_name         = var.key_vault_name
     postgres_secret_name   = "airflow-postgres-connection-string"
-    storage_account_name   = var.storage_account_name
-    dags_container_name    = var.dags_container_name
-    logs_container_name    = var.logs_container_name
     docker_compose_content = file("${path.module}/../../../docker-compose.yml")
   }))
 
