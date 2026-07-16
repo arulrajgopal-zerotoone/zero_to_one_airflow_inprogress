@@ -54,20 +54,41 @@ Use the `vm_public_ip` output from Terraform, and the username/password from:
 - **Database name:** `TF_VAR_postgres_database_name` & `TF_VAR_postgres_data_database_name`
 - **Username / password:** `TF_VAR_postgres_admin_username` & `TF_VAR_postgres_admin_password`
 
-## 5. Push to `main`
+## 5. Manually trigger the deploy workflows (first time)
 
-Pushing to the `main` branch triggers the GitHub workflows that keep the VM in sync with this repo — no local `az login` session needed:
+On the first deploy, nothing has been pushed to `main` yet, so trigger both workflows manually once via Actions → *workflow name* → Run workflow (`workflow_dispatch`), optionally overriding the `resource_group`/`vm_name` inputs — no local `az login` session needed:
 
-- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** — triggers on a push touching `docker-compose.yml`. Updates the running stack on the VM to match the new compose file.
-- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** — triggers on a push touching `src/dags/**` or `src/tasks/**`. Publishes the new DAGs/tasks to storage and syncs them onto the VM.
+- **[Deploy Compose Stack](.github/workflows/deploy-compose.yml)** — updates the running stack on the VM to match `docker-compose.yml`.
+- **[Deploy DAGs](.github/workflows/deploy-dags.yml)** — publishes `src/dags/`/`src/tasks/` to the `dags` blob container and syncs them onto the VM.
 
 Note the VM has no periodic sync timer or persistent sync script of its own ([install_docker.sh](IAC/terraform/install_docker.sh) only sets the stack up on first boot); each workflow pushes state to the VM itself on every run.
 
-Both workflows can also be triggered manually via Actions → *workflow name* → Run workflow (`workflow_dispatch`), optionally overriding the `resource_group`/`vm_name` inputs.
+After this first manual run, subsequent syncs are taken care of by pushing to `main`: **Deploy Compose Stack** re-runs on any push touching `docker-compose.yml`, and **Deploy DAGs** re-runs on any push touching `src/dags/**` or `src/tasks/**`. If storage and the VM ever drift outside of a push to `main` (e.g. after a VM restart), re-run either workflow manually the same way.
 
-## 6. Manually sync DAGs (one-off)
+## 6. Check DAG sync and Airflow processes are up
 
-DAG/task sync onto the VM isn't automatic outside of a push to `main` — if storage and the VM ever drift (e.g. after a VM restart, or a change that didn't go through `main`), re-sync it as a one-off by running **[deploy-dags.yml](.github/workflows/deploy-dags.yml)** manually: Actions → Deploy DAGs → Run workflow. This re-uploads `src/dags/`/`src/tasks/` to the `dags` blob container and re-triggers the download-batch sync onto the VM, without needing a new commit.
+**DAGs and tasks path on the VM** — navigate here and run `ll` to confirm the DAGs and tasks were copied over:
+
+```bash
+cd /opt/airflow/dags
+cd /opt/airflow/tasks
+```
+
+**Check dag-processor, webserver and scheduler status on the VM:**
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+Sample output:
+
+```
+NAMES                     STATUS
+airflow-dag-processor-1   Up 3 hours
+airflow-webserver-1       Up 3 hours
+airflow-scheduler-1       Up 3 hours
+```
+
 
 ## 7. Log in to Airflow and test it
 
@@ -85,26 +106,4 @@ Once logged in, wait a few minutes, then run the `test_job` DAG to validate the 
 
 Run the `ddl_setup` DAG first, then the `data_proc` DAG (actual data processing).
 
-## 9. Additional info
 
-**DAGs and tasks path on the VM:**
-
-```bash
-cd /opt/airflow/dags
-cd /opt/airflow/tasks
-```
-
-**Check dag-processor, webserver and scheduler status on the VM:**
-
-```bash
-docker ps --format "table {{.Names}}\t{{.Status}}"
-```
-
-Sample output:
-
-```
-NAMES                     STATUS
-airflow-dag-processor-1   Up About an hour
-airflow-webserver-1       Up 3 hours
-airflow-scheduler-1       Up 3 hours
-```
